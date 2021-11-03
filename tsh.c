@@ -85,9 +85,12 @@ void app_error(char *msg);
 typedef void handler_t(int);
 handler_t *Signal(int signum, handler_t *handler);
 
-// fork wraper
+// Wraper prototypes
 pid_t Fork(void);
-
+void Sigemptyset(sigset_t *set);
+void Sigaddset(sigset_t *set, int signo);
+void Sigprocmask(int how, const sigset_t *set, sigset_t *oset);
+void Setpgid(pid_t pid, pid_t pgid);
 /*
  * main - The shell's main routine
  */
@@ -174,35 +177,45 @@ void eval(char *cmdline)
   char buf[MAXLINE];   /* Holds modified command line */
   int bg;              /* Should the job run in bg or fg? */
   pid_t pid;           /* Process id */
+  sigset_t mask; // set used to block specific signals
 
   strcpy(buf, cmdline);
-  bg = parseline(buf, argv); // 0 then BG or 1 then FG
+  bg = parseline(buf, argv); // 0 then FG or 1 then BG
   if (argv[0] == NULL)
     return;   /* Ignore empty lines */
 
   if (!builtin_command(argv)) { // if command is not built in
-    printf("command not built in, will have that soon!\n");
+    // ult blocks SIGCHILD
+    Sigemptyset(&mask); //init signal set, exclude signals in mask
+    Sigaddset(&mask, SIGCHLD); // add child signal to excluded signals
+    Sigprocmask(SIG_BLOCK, &mask, NULL); // make the mask set a blocked set
+
+    // ult this is the child
     if ((pid = Fork()) == 0) {   /* Child runs user job */
+      // ult need to put child in a new process group
+      // such that group ID == child's PID
+      Setpgid(0, 0);
+      Sigprocmask(SIG_UNBLOCK, &mask, NULL);
       if (execve(argv[0], argv, environ) < 0) {
           printf("%s: Command not found.\n", argv[0]);
           exit(0);
       }
     }
   }
-  //printf("BG= %d\n",bg);
 	/* Parent waits for foreground job to terminate */
-	if (bg) { // if bg == 1, we have background job
-	  int status;
-	  if (waitpid(pid, &status, 0) < 0)
-	    unix_error("waitfg: waitpid error");
+	if (!bg) { // if bg == 0, we have foreground job
+    addjob(jobs, pid, FG, cmdline);
+    Sigprocmask(SIG_UNBLOCK, &mask, NULL);
+    waitfg(pid);
 	}
-	else { // if bg == 0, we have a foreground job
+	else { // if bg == 1, we have a background job
     waitfg(pid);
 	  printf("%d %s", pid, cmdline);
   }
   return;
 }
-
+/* Begin implementing wrappers */
+// Fork wrapper
 pid_t Fork(void){
   pid_t pid;
   if ((pid = fork()) < 0)
@@ -210,6 +223,29 @@ pid_t Fork(void){
   return pid;
 }
 
+// Sigemptyset wrapper
+void Sigemptyset(sigset_t *set){
+  if (sigemptyset(set) < 0)
+    app_error("Sigemptyset error\n");
+}
+
+// Sigaddset wrapper
+void Sigaddset(sigset_t *set, int signo){
+  if (sigaddset(set, signo) < 0)
+    app_error("Sigaddset error\n");
+}
+
+// Sigprocmask wrapper
+void Sigprocmask(int how, const sigset_t *set, sigset_t *oset){
+  if (sigprocmask(how, set, oset) < 0)
+    app_error("Sigprocmask error\n");
+}
+
+// Setpgid wrapper
+void Setpgid(pid_t pid, pid_t pgid){
+  if (setpgid(pid, pgid) < 0)
+    unix_error("Setpgid error\n");
+}
 /*
  * parseline - Parse the command line and build the argv array.
  *

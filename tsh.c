@@ -173,7 +173,7 @@ void eval(char *cmdline)
   pid_t pid;           /* Process id */
 
   strcpy(buf, cmdline);
-  bg = parseline(buf, argv); // 0, BG or 1, FG
+  bg = parseline(buf, argv); // 0 then BG or 1 then FG
   if (argv[0] == NULL)
     return;   /* Ignore empty lines */
 
@@ -185,9 +185,9 @@ void eval(char *cmdline)
       //         exit(0);
       //     }
   }
-
+  //printf("BG= %d\n",bg);
 	/* Parent waits for foreground job to terminate */
-	if (!bg) { // if BG job
+	if (bg) { // if bg == 1, we have background job
 	  int status;
 	  if (waitpid(pid, &status, 0) < 0)
 	    unix_error("waitfg: waitpid error");

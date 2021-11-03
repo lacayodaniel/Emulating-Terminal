@@ -163,8 +163,38 @@ int main(int argc, char **argv)
  * background children don't receive SIGINT (SIGTSTP) from the kernel
  * when we type ctrl-c (ctrl-z) at the keyboard.
 */
+/* $begin eval (textbook pg 791) */
+/* eval - Evaluate a command line */
 void eval(char *cmdline)
 {
+    char *argv[MAXARGS]; /* Argument list execve() */
+    char buf[MAXLINE];   /* Holds modified command line */
+    int bg;              /* Should the job run in bg or fg? */
+    pid_t pid;           /* Process id */
+
+    strcpy(buf, cmdline);
+    bg = parseline(buf, argv); // 0, BG or 1, FG
+    if (argv[0] == NULL)
+      return;   /* Ignore empty lines */
+
+    if (!builtin_command(argv)) { // if command is not built in
+      printf("command not built in, will have that soon!\n");
+        // if ((pid = Fork()) == 0) {   /* Child runs user job */
+        //     if (execve(argv[0], argv, environ) < 0) {
+        //         printf("%s: Command not found.\n", argv[0]);
+        //         exit(0);
+        //     }
+        }
+
+	/* Parent waits for foreground job to terminate */
+	if (!bg) { // if BG job
+	    int status;
+	    if (waitpid(pid, &status, 0) < 0)
+		unix_error("waitfg: waitpid error");
+	}
+	else { // if FG job, print pid and command
+	    printf("%d %s", pid, cmdline);
+    }
     return;
 }
 
@@ -228,11 +258,19 @@ int parseline(const char *cmdline, char **argv)
 /*
  * builtin_cmd - If the user has typed a built-in command then execute
  *    it immediately.
+ *    (quit, jobs, bg or fg)
  */
-int builtin_cmd(char **argv)
-{
-    return 0;     /* not a builtin command */
-}
+ /* If first arg is a builtin command, run it and return true */
+ int builtin_command(char **argv)
+ {
+  if (!strcmp(argv[0], "quit")) /* quit command */
+ 	  exit(0);
+  if (!strcmp(argv[0], "&"))    /* Ignore singleton & */
+ 	  return 1;
+  if (!strcmp(argv[0], "jobs"))    /* jobs command */
+ 	  listjobs(jobs);
+  return 0;                     /* Not a builtin command */
+ }
 
 /*
  * do_bgfg - Execute the builtin bg and fg commands

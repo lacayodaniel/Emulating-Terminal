@@ -85,6 +85,9 @@ void app_error(char *msg);
 typedef void handler_t(int);
 handler_t *Signal(int signum, handler_t *handler);
 
+// fork wraper
+pid_t Fork(void);
+
 /*
  * main - The shell's main routine
  */
@@ -179,11 +182,12 @@ void eval(char *cmdline)
 
   if (!builtin_command(argv)) { // if command is not built in
     printf("command not built in, will have that soon!\n");
-      // if ((pid = Fork()) == 0) {   /* Child runs user job */
-      //     if (execve(argv[0], argv, environ) < 0) {
-      //         printf("%s: Command not found.\n", argv[0]);
-      //         exit(0);
-      //     }
+    if ((pid = Fork()) == 0) {   /* Child runs user job */
+      if (execve(argv[0], argv, environ) < 0) {
+          printf("%s: Command not found.\n", argv[0]);
+          exit(0);
+      }
+    }
   }
   //printf("BG= %d\n",bg);
 	/* Parent waits for foreground job to terminate */
@@ -192,11 +196,18 @@ void eval(char *cmdline)
 	  if (waitpid(pid, &status, 0) < 0)
 	    unix_error("waitfg: waitpid error");
 	}
-	else { // if FG job, print pid and command
+	else { // if bg == 0, we have a foreground job
     waitfg(pid);
 	  printf("%d %s", pid, cmdline);
   }
   return;
+}
+
+pid_t Fork(void){
+  pid_t pid;
+  if ((pid = fork()) < 0)
+    unix_error("fork error");
+  return pid;
 }
 
 /*

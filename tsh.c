@@ -184,7 +184,7 @@ void eval(char *cmdline)
   if (argv[0] == NULL)
     return;   /* Ignore empty lines */
 
-  if (!builtin_command(argv)) { // if command is not built in
+  if (!builtin_cmd(argv)) { // if command is not built in
     // ult blocks SIGCHILD
     Sigemptyset(&mask); //init signal set, exclude signals in mask
     Sigaddset(&mask, SIGCHLD); // add child signal to excluded signals
@@ -309,7 +309,7 @@ int parseline(const char *cmdline, char **argv)
  *    (quit, jobs, bg or fg)
  */
  /* If first arg is a builtin command, run it and return true */
- int builtin_command(char **argv)
+ int builtin_cmd(char **argv)
  {
   if (!strcmp(argv[0], "quit")) /* quit command */
  	  exit(0);

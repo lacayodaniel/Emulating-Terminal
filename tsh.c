@@ -167,24 +167,24 @@ int main(int argc, char **argv)
 /* eval - Evaluate a command line */
 void eval(char *cmdline)
 {
-    char *argv[MAXARGS]; /* Argument list execve() */
-    char buf[MAXLINE];   /* Holds modified command line */
-    int bg;              /* Should the job run in bg or fg? */
-    pid_t pid;           /* Process id */
+  char *argv[MAXARGS]; /* Argument list execve() */
+  char buf[MAXLINE];   /* Holds modified command line */
+  int bg;              /* Should the job run in bg or fg? */
+  pid_t pid;           /* Process id */
 
-    strcpy(buf, cmdline);
-    bg = parseline(buf, argv); // 0, BG or 1, FG
-    if (argv[0] == NULL)
-      return;   /* Ignore empty lines */
+  strcpy(buf, cmdline);
+  bg = parseline(buf, argv); // 0, BG or 1, FG
+  if (argv[0] == NULL)
+    return;   /* Ignore empty lines */
 
-    if (!builtin_command(argv)) { // if command is not built in
-      printf("command not built in, will have that soon!\n");
-        // if ((pid = Fork()) == 0) {   /* Child runs user job */
-        //     if (execve(argv[0], argv, environ) < 0) {
-        //         printf("%s: Command not found.\n", argv[0]);
-        //         exit(0);
-        //     }
-        }
+  if (!builtin_command(argv)) { // if command is not built in
+    printf("command not built in, will have that soon!\n");
+      // if ((pid = Fork()) == 0) {   /* Child runs user job */
+      //     if (execve(argv[0], argv, environ) < 0) {
+      //         printf("%s: Command not found.\n", argv[0]);
+      //         exit(0);
+      //     }
+  }
 
 	/* Parent waits for foreground job to terminate */
 	if (!bg) { // if BG job
@@ -193,9 +193,10 @@ void eval(char *cmdline)
 	    unix_error("waitfg: waitpid error");
 	}
 	else { // if FG job, print pid and command
-	    printf("%d %s", pid, cmdline);
-    }
-    return;
+    waitfg(pid);
+	  printf("%d %s", pid, cmdline);
+  }
+  return;
 }
 
 /*
@@ -207,52 +208,52 @@ void eval(char *cmdline)
  */
 int parseline(const char *cmdline, char **argv)
 {
-    static char array[MAXLINE]; /* holds local copy of command line */
-    char *buf = array;          /* ptr that traverses command line */
-    char *delim;                /* points to first space delimiter */
-    int argc;                   /* number of args */
-    int bg;                     /* background job? */
+  static char array[MAXLINE]; /* holds local copy of command line */
+  char *buf = array;          /* ptr that traverses command line */
+  char *delim;                /* points to first space delimiter */
+  int argc;                   /* number of args */
+  int bg;                     /* background job? */
 
-    strcpy(buf, cmdline);
-    buf[strlen(buf)-1] = ' ';  /* replace trailing '\n' with space */
-    while (*buf && (*buf == ' ')) /* ignore leading spaces */
-	buf++;
+  strcpy(buf, cmdline);
+  buf[strlen(buf)-1] = ' ';  /* replace trailing '\n' with space */
+  while (*buf && (*buf == ' ')) /* ignore leading spaces */
+    buf++;
 
-    /* Build the argv list */
-    argc = 0;
+  /* Build the argv list */
+  argc = 0;
+  if (*buf == '\'') {
+    buf++;
+    delim = strchr(buf, '\'');
+  }
+  else {
+    delim = strchr(buf, ' ');
+  }
+
+  while (delim) {
+    argv[argc++] = buf;
+    *delim = '\0';
+    buf = delim + 1;
+    while (*buf && (*buf == ' ')) /* ignore spaces */
+      buf++;
+
     if (*buf == '\'') {
-	buf++;
-	delim = strchr(buf, '\'');
+      buf++;
+      delim = strchr(buf, '\'');
     }
     else {
-	delim = strchr(buf, ' ');
+      delim = strchr(buf, ' ');
     }
+  }
+  argv[argc] = NULL;
 
-    while (delim) {
-	argv[argc++] = buf;
-	*delim = '\0';
-	buf = delim + 1;
-	while (*buf && (*buf == ' ')) /* ignore spaces */
-	       buf++;
+  if (argc == 0)  /* ignore blank line */
+    return 1;
 
-	if (*buf == '\'') {
-	    buf++;
-	    delim = strchr(buf, '\'');
-	}
-	else {
-	    delim = strchr(buf, ' ');
-	}
-    }
-    argv[argc] = NULL;
-
-    if (argc == 0)  /* ignore blank line */
-	return 1;
-
-    /* should the job run in the background? */
-    if ((bg = (*argv[argc-1] == '&')) != 0) {
-	argv[--argc] = NULL;
-    }
-    return bg;
+  /* should the job run in the background? */
+  if ((bg = (*argv[argc-1] == '&')) != 0) {
+    argv[--argc] = NULL;
+  }
+  return bg;
 }
 
 /*

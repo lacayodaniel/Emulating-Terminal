@@ -188,9 +188,9 @@ void eval(char *cmdline)
 
 	/* Parent waits for foreground job to terminate */
 	if (!bg) { // if BG job
-	    int status;
-	    if (waitpid(pid, &status, 0) < 0)
-		unix_error("waitfg: waitpid error");
+	  int status;
+	  if (waitpid(pid, &status, 0) < 0)
+	    unix_error("waitfg: waitpid error");
 	}
 	else { // if FG job, print pid and command
 	    printf("%d %s", pid, cmdline);
@@ -269,6 +269,10 @@ int parseline(const char *cmdline, char **argv)
  	  return 1;
   if (!strcmp(argv[0], "jobs"))    /* jobs command */
  	  listjobs(jobs);
+    return 1;
+  if (!strcmp(argv[0], "bg") || !strcmp(argv[0],"fg"))    /* jobs command */
+ 	  do_bgfg(argv);
+    return 1;
   return 0;                     /* Not a builtin command */
  }
 
@@ -277,6 +281,7 @@ int parseline(const char *cmdline, char **argv)
  */
 void do_bgfg(char **argv)
 {
+  printf("doing bg or fg soon\n");
     return;
 }
 
@@ -285,7 +290,9 @@ void do_bgfg(char **argv)
  */
 void waitfg(pid_t pid)
 {
-    return;
+  while (!pid)
+    sleep(1);
+  return;
 }
 
 /*****************

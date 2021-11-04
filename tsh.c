@@ -243,6 +243,7 @@ void Setpgid(pid_t pid, pid_t pgid){
   if (setpgid(pid, pgid) < 0)
     unix_error("Setpgid error\n");
 }
+
 /*
  * parseline - Parse the command line and build the argv array.
  *
@@ -334,11 +335,19 @@ void do_bgfg(char **argv)
 /*
  * waitfg - Block until process pid is no longer the foreground process
  */
-void waitfg(pid_t pid)
-{
-  while (!pid)
-    sleep(1);
+void waitfg(pid_t pid){
+  while(1){
+    if (pid != fgpid(jobs)){
+      break;
+    }
+    else {
+      sleep(1);
+    }
+  }
   return;
+  // while (!pid)
+  //   sleep(1);
+  // return;
 }
 
 /*****************
@@ -402,8 +411,7 @@ void initjobs(struct job_t *jobs) {
 }
 
 /* maxjid - Returns largest allocated job ID */
-int maxjid(struct job_t *jobs)
-{
+int maxjid(struct job_t *jobs){
   int i, max=0;
 
   for (i = 0; i < MAXJOBS; i++){
@@ -414,8 +422,7 @@ int maxjid(struct job_t *jobs)
 }
 
 /* addjob - Add a job to the job list */
-int addjob(struct job_t *jobs, pid_t pid, int state, char *cmdline)
-{
+int addjob(struct job_t *jobs, pid_t pid, int state, char *cmdline){
   int i;
 
   if (pid < 1)
@@ -440,8 +447,7 @@ int addjob(struct job_t *jobs, pid_t pid, int state, char *cmdline)
 }
 
 /* deletejob - Delete a job whose PID=pid from the job list */
-int deletejob(struct job_t *jobs, pid_t pid)
-{
+int deletejob(struct job_t *jobs, pid_t pid){
   int i;
 
   if (pid < 1)
@@ -482,8 +488,7 @@ struct job_t *getjobpid(struct job_t *jobs, pid_t pid) {
 }
 
 /* getjobjid  - Find a job (by JID) on the job list */
-struct job_t *getjobjid(struct job_t *jobs, int jid)
-{
+struct job_t *getjobjid(struct job_t *jobs, int jid){
   int i;
 
   if (jid < 1)
@@ -496,8 +501,7 @@ struct job_t *getjobjid(struct job_t *jobs, int jid)
 }
 
 /* pid2jid - Map process ID to job ID */
-int pid2jid(pid_t pid)
-{
+int pid2jid(pid_t pid){
   int i;
 
   if (pid < 1)
@@ -510,8 +514,7 @@ int pid2jid(pid_t pid)
 }
 
 /* listjobs - Print the job list */
-void listjobs(struct job_t *jobs)
-{
+void listjobs(struct job_t *jobs){
   int i;
 
   for (i = 0; i < MAXJOBS; i++) {
@@ -546,8 +549,7 @@ void listjobs(struct job_t *jobs)
 /*
  * usage - print a help message
  */
-void usage(void)
-{
+void usage(void){
   printf("Usage: shell [-hvp]\n");
   printf("   -h   print this message\n");
   printf("   -v   print additional diagnostic information\n");
@@ -558,8 +560,7 @@ void usage(void)
 /*
  * unix_error - unix-style error routine
  */
-void unix_error(char *msg)
-{
+void unix_error(char *msg){
   fprintf(stdout, "%s: %s\n", msg, strerror(errno));
   exit(1);
 }
@@ -567,8 +568,7 @@ void unix_error(char *msg)
 /*
  * app_error - application-style error routine
  */
-void app_error(char *msg)
-{
+void app_error(char *msg){
   fprintf(stdout, "%s\n", msg);
   exit(1);
 }
@@ -576,8 +576,7 @@ void app_error(char *msg)
 /*
  * Signal - wrapper for the sigaction function
  */
-handler_t *Signal(int signum, handler_t *handler)
-{
+handler_t *Signal(int signum, handler_t *handler){
   struct sigaction action, old_action;
   action.sa_handler = handler;
   sigemptyset(&action.sa_mask); /* block sigs of type being handled */
@@ -592,8 +591,7 @@ handler_t *Signal(int signum, handler_t *handler)
  * sigquit_handler - The driver program can gracefully terminate the
  *    child shell by sending it a SIGQUIT signal.
  */
-void sigquit_handler(int sig)
-{
+void sigquit_handler(int sig){
   printf("Terminating after receipt of SIGQUIT signal\n");
   exit(1);
 }

@@ -192,8 +192,8 @@ void eval(char *cmdline)
       Setpgid(0, 0);
       Sigprocmask(SIG_UNBLOCK, &mask, NULL);
       if (execve(argv[0], argv, environ) < 0) {
-          printf("%s: Command not found.\n", argv[0]);
-          exit(0);
+        printf("%s: Command not found.\n", argv[0]);
+        exit(0);
       }
     }
   }
@@ -202,10 +202,12 @@ void eval(char *cmdline)
     addjob(jobs, pid, FG, cmdline);
     Sigprocmask(SIG_UNBLOCK, &mask, NULL);
     waitfg(pid);
+
 	}
 	else { // if bg == 1, we have a background job
-    waitfg(pid);
-	  printf("%d %s", pid, cmdline);
+    addjob(jobs, pid, BG, cmdline);
+    Sigprocmask(SIG_UNBLOCK, &mask, NULL); // ult unblock sigchld signal
+	  printf("[%d] (%d) %s", pid2jid(pid), pid, cmdline);
   }
   return;
 }

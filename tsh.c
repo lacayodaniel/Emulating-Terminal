@@ -87,7 +87,7 @@ handler_t *Signal(int signum, handler_t *handler);
 
 // Wraper prototypes
 pid_t Fork(void);
-void Kill(pid_t pid, int sig)
+void Kill(pid_t pid, int sig);
 void Sigemptyset(sigset_t *set);
 void Sigaddset(sigset_t *set, int signo);
 void Sigprocmask(int how, const sigset_t *set, sigset_t *oset);
@@ -334,13 +334,15 @@ void do_bgfg(char **argv){
     return;
   }
 
-  if (argv[1][0] == "%"){ // if second arg begins with % expect jid
-    if ((job = getjobjid(jobs, atoi(&argv[1][1]))) == NULL);
+  if (strcmp(&argv[1][0],"%")){ // if second arg begins with % expect jid
+    if ((job = getjobjid(jobs, atoi(&argv[1][1]))) == NULL){
       printf("%s: No such job\n", argv[1]);
+    }
   }
   else { // expect second arg is pid
-    if ((job = getjobpid(jobs, atoi(&argv[1]))) == NULL);
+    if ((job = getjobpid(jobs, atoi(argv[1]))) == NULL){
       printf("%s: No such job\n", argv[1]);
+    }
   }
 
   if (!strcmp(argv[0], "fg")){
@@ -404,7 +406,7 @@ void sigchld_handler(int sig){
     }
     else if (WIFSTOPPED(status)){
       getjobpid(jobs,pid)->state = ST;
-      printf("Job [%d] (%d) stopped by signal %d\n", jint, pid, WSTOPSIG(status));
+      printf("Job [%d] (%d) stopped by signal %d\n", jid, pid, WSTOPSIG(status));
     }
   }
   return;

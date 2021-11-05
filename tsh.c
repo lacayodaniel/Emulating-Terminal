@@ -347,13 +347,13 @@ void do_bgfg(char **argv){
 
   if (!strcmp(argv[0], "fg")){
     job->state = FG;
-    printf("[%d] (%d) %s", job->jid, job->pid, job->cmdline);
     Kill(-job->pid, SIGCONT);
+    waitfg(job->pid);
   }
   else {
     job->state = BG;
+    printf("[%d] (%d) %s", job->jid, job->pid, job->cmdline);
     Kill(-job->pid, SIGCONT);
-    waitfg(job->pid);
   }
 }
 
@@ -403,7 +403,6 @@ void sigchld_handler(int sig){
       printf("Job [%d] (%d) stopped by signal %d\n", jid, pid, WSTOPSIG(status));
     }
   }
-  return;
 }
 
 /*

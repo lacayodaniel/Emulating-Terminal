@@ -346,12 +346,12 @@ void do_bgfg(char **argv){
   }
 
   if (!strcmp(argv[0], "fg")){
-    job->state = BG;
+    job->state = FG;
     printf("[%d] (%d) %s", job->jid, job->pid, job->cmdline);
     Kill(-job->pid, SIGCONT);
   }
   else {
-    job->state = FG;
+    job->state = BG;
     Kill(-job->pid, SIGCONT);
     waitfg(job->pid);
   }
@@ -363,16 +363,10 @@ void do_bgfg(char **argv){
 void waitfg(pid_t pid){
   while(1){
     if (pid != fgpid(jobs)){
-      break;
+      return;
     }
-    else {
-      sleep(1);
-    }
+    sleep(1);
   }
-  return;
-  // while (!pid)
-  //   sleep(1);
-  // return;
 }
 
 /*****************

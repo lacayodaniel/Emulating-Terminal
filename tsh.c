@@ -335,7 +335,7 @@ void do_bgfg(char **argv){
     return;
   }
 
-  if (!strcmp(&argv[1][0],"%")){ // if second arg begins with % expect jid
+  if (argv[1][0] == "%"){ // if second arg begins with % expect jid
     if ((job = getjobjid(jobs, atoi(&argv[1][1]))) == NULL){
       printf("%s: No such job\n", argv[1]);
       return;

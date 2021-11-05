@@ -87,6 +87,7 @@ handler_t *Signal(int signum, handler_t *handler);
 
 // Wraper prototypes
 pid_t Fork(void);
+void Kill(pid_t pid, int sig)
 void Sigemptyset(sigset_t *set);
 void Sigaddset(sigset_t *set, int signo);
 void Sigprocmask(int how, const sigset_t *set, sigset_t *oset);
@@ -326,28 +327,50 @@ int builtin_cmd(char **argv) {
 /*
  * do_bgfg - Execute the builtin bg and fg commands
  */
-void do_bgfg(char **argv)
-{
-  printf("doing bg or fg soon\n");
-  return;
+void do_bgfg(char **argv){
+  struct job_t *job;
+
+  if (argv[1] == NULL){
+    return;
+  }
+
+  if (argv[1][0] == "%"){ // if second arg begins with % expect jid
+    if ((job = getjobjid(jobs, atoi(&argv[1][1]))) == NULL);
+      printf("%s: No such job\n", argv[1]);
+  }
+  else { // expect second arg is pid
+    if ((job = getjobpid(jobs, atoi(&argv[1]))) == NULL);
+      printf("%s: No such job\n", argv[1]);
+  }
+
+  if (!strcmp(argv[0], "fg")){
+    job->state = BG;
+    printf("[%d] (%d) %s", job->jid, job->pid, job->cmdline);
+    Kill(-job->pid, SIGCONT);
+  }
+  else {
+    job->state = FG;
+    Kill(-job->pid, SIGCONT);
+    waitfg(job->pid);
+  }
 }
 
 /*
  * waitfg - Block until process pid is no longer the foreground process
  */
 void waitfg(pid_t pid){
-  while(1){
-    if (pid != fgpid(jobs)){
-      break;
-    }
-    else {
-      sleep(1);
-    }
-  }
-  return;
-  // while (!pid)
-  //   sleep(1);
+  // while(1){
+  //   if (pid != fgpid(jobs)){
+  //     break;
+  //   }
+  //   else {
+  //     sleep(1);
+  //   }
+  // }
   // return;
+  while (!pid)
+    sleep(1);
+  return;
 }
 
 /*****************
@@ -361,19 +384,43 @@ void waitfg(pid_t pid){
  *     available zombie children, but doesn't wait for any other
  *     currently running children to terminate.
  */
-void sigchld_handler(int sig)
-{
+void sigchld_handler(int sig){
+  int status;
+  int jid;
+  pid_t pid;
+
+  // WHNOHANG returns pid of terminated child or 0 (SIGCHLD)
+  // WUNTRACED returns pid of suspended child (SIGTSTP, SIGSTOP)
+  while ((pid = waitpid(-1,&status,WNOHANG | WUNTRACED)) > 0) {
+    jid = pid2jid(pid);
+
+    // determine exit status
+    if (WIFEXITED(status)){ // if child terminated
+      deletejob(jobs, pid);
+    }
+    else if (WIFSIGNALED(status)){
+      deletejob(jobs, pid);
+      printf("Job [%d] (%d) terminated by signal %d\n", jid, pid, WTERMSIG(status));
+    }
+    else if (WIFSTOPPED(status)){
+      getjobpid(jobs,pid)->state = ST;
+      printf("Job [%d] (%d) stopped by signal %d\n", jint, pid, WSTOPSIG(status));
+    }
+  }
   return;
 }
 
 /*
  * sigint_handler - The kernel sends a SIGINT to the shell whenver the
  *    user types ctrl-c at the keyboard.  Catch it and send it along
- *    to the foreground job.
+ *    to the foreground job. Intended to quit spin process and app
  */
-void sigint_handler(int sig)
-{
-  return;
+void sigint_handler(int sig){
+  pid_t pid;
+
+  if ((pid = fgpid(jobs)) > 0){ // get current foreground job pid
+    Kill(pid, sig);
+  }
 }
 
 /*
@@ -381,9 +428,20 @@ void sigint_handler(int sig)
  *     the user types ctrl-z at the keyboard. Catch it and suspend the
  *     foreground job by sending it a SIGTSTP.
  */
-void sigtstp_handler(int sig)
-{
-  return;
+void sigtstp_handler(int sig){
+  pid_t pid;
+
+  if ((pid = fgpid(jobs)) > 0){ // get current foreground job pid
+    Kill(-pid, sig); // -pid suspends fg group
+  }
+}
+
+void Kill(pid_t pid, int sig){
+  int rc;
+
+  if ((rc = kill(pid, sig)) < 0){
+    unix_error("Kill error");
+  }
 }
 
 /*********************

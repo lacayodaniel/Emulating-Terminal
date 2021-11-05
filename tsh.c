@@ -252,8 +252,7 @@ void Setpgid(pid_t pid, pid_t pgid){
  * argument.  Return true if the user has requested a BG job, false if
  * the user has requested a FG job.
  */
-int parseline(const char *cmdline, char **argv)
-{
+int parseline(const char *cmdline, char **argv){
   static char array[MAXLINE]; /* holds local copy of command line */
   char *buf = array;          /* ptr that traverses command line */
   char *delim;                /* points to first space delimiter */
@@ -309,10 +308,12 @@ int parseline(const char *cmdline, char **argv)
  */
  /* If first arg is a builtin command, run it and return true */
 int builtin_cmd(char **argv) {
-  if (!strcmp(argv[0], "quit")) /* quit command */
+  if (!strcmp(argv[0], "quit")){ /* quit command */
 	  exit(0);
-  else if (!strcmp(argv[0], "&"))    /* Ignore singleton & */
+  }
+  else if (!strcmp(argv[0], "&")){    /* Ignore singleton & */
 	  return 1;
+  }
   else if (!strcmp(argv[0], "jobs")){    /* jobs command */
 	  listjobs(jobs);
     return 1;
@@ -421,7 +422,7 @@ void sigint_handler(int sig){
   pid_t pid;
 
   if ((pid = fgpid(jobs)) != 0){ // get current foreground job pid
-    Kill(pid, sig);
+    Kill(-pid, sig);
   }
 }
 

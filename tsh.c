@@ -420,7 +420,7 @@ void sigchld_handler(int sig){
 void sigint_handler(int sig){
   pid_t pid;
 
-  if ((pid = fgpid(jobs)) > 0){ // get current foreground job pid
+  if ((pid = fgpid(jobs)) != 0){ // get current foreground job pid
     Kill(pid, sig);
   }
 }
@@ -433,7 +433,7 @@ void sigint_handler(int sig){
 void sigtstp_handler(int sig){
   pid_t pid;
 
-  if ((pid = fgpid(jobs)) > 0){ // get current foreground job pid
+  if ((pid = fgpid(jobs)) != 0){ // get current foreground job pid
     Kill(-pid, sig); // -pid suspends fg group
   }
 }

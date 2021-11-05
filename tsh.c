@@ -346,7 +346,7 @@ void do_bgfg(char **argv){
       printf("%s: argument must be a PID or %%jobid\n", argv[0]);
       return;
     }
-    else if ((job = getjobpid(jobs, atoi(argv[1]))) == NULL){
+    if ((job = getjobpid(jobs, atoi(argv[1]))) == NULL){
       printf("(%s): No such process\n", argv[1]);
       return;
     }

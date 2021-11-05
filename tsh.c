@@ -352,7 +352,7 @@ void do_bgfg(char **argv){
   }
   else {
     job->state = BG;
-    printf("[%d] (%d) %s", job->jid, job->pid, job->cmdline);
+    printf("[%d] (%d) %s\n", job->jid, job->pid, job->cmdline);
     Kill(-job->pid, SIGCONT);
   }
 }

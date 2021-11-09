@@ -88,6 +88,7 @@ clean:
 	rm -f $(FILES) *.o *~
 
 alltsht:
+	rm alltsht.out
 	$(DRIVER) -t trace01.txt -s $(TSH) -a $(TSHARGS) >> alltsht.out
 	$(DRIVER) -t trace02.txt -s $(TSH) -a $(TSHARGS) >> alltsht.out
 	$(DRIVER) -t trace03.txt -s $(TSH) -a $(TSHARGS) >> alltsht.out

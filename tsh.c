@@ -174,7 +174,7 @@ void eval(char *cmdline)
   char buf[MAXLINE];   /* Holds modified command line */
   int bg;              /* Should the job run in bg or fg? */
   pid_t pid;           /* Process id */
-  sigset_t mask; // set used to block specific signals
+  sigset_t mask, prev; // set used to block specific signals
 
   strcpy(buf, cmdline);
   bg = parseline(buf, argv); // 0 then FG or 1 then BG
@@ -185,15 +185,12 @@ void eval(char *cmdline)
     // ult blocks SIGCHILD
     Sigemptyset(&mask); //init signal set, exclude signals in mask
     Sigaddset(&mask, SIGCHLD); // add child signal to excluded signals
-    Sigprocmask(SIG_BLOCK, &mask, NULL); // make the mask set a blocked set
+    Sigprocmask(SIG_BLOCK, &mask, &prev); /* Block SIGCHLD */
 
-    // ult this is the child
     if ((pid = Fork()) == 0) {   /* Child runs user job */
-      // ult need to put child in a new process group
-      // such that group ID == child's PID
-      Setpgid(0, 0);
-      Sigprocmask(SIG_UNBLOCK, &mask, NULL);
-      if (execve(argv[0], argv, environ) < 0) {
+      Setpgid(0, 0); // set child's process group = child's pid
+      Sigprocmask(SIG_SETMASK, &prev, NULL);
+      if (execve(argv[0], argv, environ) < 0) { // back to parent
         printf("%s: Command not found.\n", argv[0]);
         exit(0);
       }
@@ -202,13 +199,13 @@ void eval(char *cmdline)
 	/* Parent waits for foreground job to terminate */
 	if (!bg) { // if bg == 0, we have foreground job
     addjob(jobs, pid, FG, cmdline);
-    Sigprocmask(SIG_UNBLOCK, &mask, NULL);
+    Sigprocmask(SIG_SETMASK, &prev, NULL);
     waitfg(pid);
 
 	}
 	else { // if bg == 1, we have a background job
     addjob(jobs, pid, BG, cmdline);
-    Sigprocmask(SIG_UNBLOCK, &mask, NULL); // ult unblock sigchld signal
+    Sigprocmask(SIG_SETMASK, &prev, NULL);
 	  printf("[%d] (%d) %s", pid2jid(pid), pid, cmdline);
   }
   return;
@@ -361,14 +358,14 @@ void do_bgfg(char **argv){
   // fg exec
   if (!strcmp(argv[0], "fg")){
     job->state = FG; // change job state
-    Kill(-job->pid, SIGCONT); // kill
+    Kill(-job->pid, SIGCONT); // send continue to foreground process group
     waitfg(job->pid);
   }
   // bg exec
   else {
     job->state = BG;
     printf("[%d] (%d) %s", job->jid, job->pid, job->cmdline);
-    Kill(-job->pid, SIGCONT);
+    Kill(-job->pid, SIGCONT); // send continue to foreground process group
   }
 }
 
@@ -407,12 +404,12 @@ void sigchld_handler(int sig){
     if (WIFEXITED(status)){ // if child exited normally
       deletejob(jobs, pid);
     }
-    else if (WIFSIGNALED(status)){ // if child terminated by a signal
+    else if (WIFSIGNALED(status)){ // if child terminated by a signal SIGINT
       deletejob(jobs, pid);
       // print the number of the signal sent
       printf("Job [%d] (%d) terminated by signal %d\n", jid, pid, WTERMSIG(status));
     }
-    else if (WIFSTOPPED(status)){ // if SIGSTOP
+    else if (WIFSTOPPED(status)){ // if child terminated by delivery of signal SIGTSP
       getjobpid(jobs,pid)->state = ST;
       // print the number of the signal sent
       printf("Job [%d] (%d) stopped by signal %d\n", jid, pid, WSTOPSIG(status));
@@ -423,7 +420,8 @@ void sigchld_handler(int sig){
 /*
  * sigint_handler - The kernel sends a SIGINT to the shell whenver the
  *    user types ctrl-c at the keyboard.  Catch it and send it along
- *    to the foreground job. Intended to quit spin process and app
+ *    to the foreground job. Intended to quit spin process and app.
+ *    uses kill to send signals
  */
 void sigint_handler(int sig){
   pid_t pid;
@@ -437,7 +435,7 @@ void sigint_handler(int sig){
 /*
  * sigtstp_handler - The kernel sends a SIGTSTP to the shell whenever
  *     the user types ctrl-z at the keyboard. Catch it and suspend the
- *     foreground job by sending it a SIGTSTP.
+ *     foreground job by sending it a SIGTSTP. Uses kill to send signals
  */
 void sigtstp_handler(int sig){
   pid_t pid;

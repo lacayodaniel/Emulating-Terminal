@@ -377,10 +377,7 @@ void do_bgfg(char **argv){
  */
 void waitfg(pid_t pid){
   // wait a second if pid is still in fg
-  while(1){
-    if (pid != fgpid(jobs)){
-      return;
-    }
+  while(pid == fgpid(jobs)){
     sleep(1);
   }
 }

@@ -182,16 +182,15 @@ void eval(char *cmdline)
     return;   /* Ignore empty lines */
 
   if (!builtin_cmd(argv)) { // if command is not built in
-    // ult blocks SIGCHILD
     Sigemptyset(&mask); //init signal set, exclude signals in mask
     Sigaddset(&mask, SIGCHLD); // add child signal to excluded signals
     Sigprocmask(SIG_BLOCK, &mask, &prev); /* Block SIGCHLD */
 
     if ((pid = Fork()) == 0) {   /* Child runs user job */
       Setpgid(0, 0); // set child's process group = child's pid
-      Sigprocmask(SIG_SETMASK, &prev, NULL);
+      Sigprocmask(SIG_SETMASK, &prev, NULL); // unblock SIGCHLD
       if (execve(argv[0], argv, environ) < 0) { // back to parent
-        printf("%s: Command not found.\n", argv[0]);
+        printf("%s: Command not found\n", argv[0]);
         exit(0);
       }
     }
@@ -199,13 +198,13 @@ void eval(char *cmdline)
 	/* Parent waits for foreground job to terminate */
 	if (!bg) { // if bg == 0, we have foreground job
     addjob(jobs, pid, FG, cmdline);
-    Sigprocmask(SIG_SETMASK, &prev, NULL);
+    Sigprocmask(SIG_SETMASK, &prev, NULL); // unblock SIGCHLD
     waitfg(pid);
 
 	}
 	else { // if bg == 1, we have a background job
     addjob(jobs, pid, BG, cmdline);
-    Sigprocmask(SIG_SETMASK, &prev, NULL);
+    Sigprocmask(SIG_SETMASK, &prev, NULL); // unblock SIGCHLD
 	  printf("[%d] (%d) %s", pid2jid(pid), pid, cmdline);
   }
   return;
